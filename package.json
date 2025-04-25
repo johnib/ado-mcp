@@ -1,6 +1,6 @@
 {
   "name": "ado-mcp",
-  "version": "0.1.1",
+  "version": "0.1.2",
   "description": "MCP Server for interacting with Azure Devops (ADO)",
   "main": "dist/index.js",
   "bin": {

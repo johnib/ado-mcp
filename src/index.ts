@@ -1,8 +1,10 @@
+#!/usr/bin/env node
+
 import { StdioServerTransport } from '@modelcontextprotocol/sdk/server/stdio.js';
 import * as dotenv from 'dotenv';
+import { AuthenticationMethod } from './auth';
 import { createAzureDevOpsServer, testConnection } from './server';
 import { AzureDevOpsConfig } from './types/config';
-import { AuthenticationMethod } from './auth';
 
 // Create a safe console logging function that won't interfere with MCP protocol
 function safeLog(message: string) {
