@@ -30,6 +30,51 @@ The server is structured around the Model Context Protocol (MCP) for communicati
 
 ## Getting Started
 
+### Configuration
+
+To use this MCP server with Cline, you only need to configure it in your MCP settings - no installation is required as the package will be automatically downloaded when needed.
+
+Add the following to your MCP settings file (typically located at `~/.cline/settings.json` or in VS Code settings):
+
+```json
+{
+  "mcpServers": {
+    "github.com/johnib/ado-mcp": {
+      "args": [
+        "-y",
+        "ado-mcp"
+      ],
+      "command": "npx",
+      "disabled": false,
+      "env": {
+        "AZURE_DEVOPS_AUTH_METHOD": "azure-cli",
+        "AZURE_DEVOPS_ORG": "<ado org>",
+        "AZURE_DEVOPS_ORG_URL": "https://dev.azure.com/<your org>",
+        "AZURE_DEVOPS_PROJECT": "<ado project>",
+        "LOG_LEVEL": "info"
+      },
+      "timeout": 60,
+      "transportType": "stdio"
+    }
+  }
+}
+```
+
+Replace the following placeholders in the configuration:
+- `<ado org>`: Your Azure DevOps organization name
+- `<your org>`: Your Azure DevOps organization name in the URL
+- `<ado project>`: Your Azure DevOps project name
+
+Key configuration options:
+- `AZURE_DEVOPS_AUTH_METHOD`: Authentication method to use (`azure-cli`, `azure-identity`, or `pat`)
+- `AZURE_DEVOPS_ORG`: Your Azure DevOps organization name
+- `AZURE_DEVOPS_ORG_URL`: The full URL to your Azure DevOps organization
+- `AZURE_DEVOPS_PROJECT`: The default project to use
+- `LOG_LEVEL`: Logging level (`debug`, `info`, `warn`, `error`)
+
+## Local Development and Testing
+> Note: This section is only relevant if you want to develop or debug the MCP server locally. If you're just using it as an MCP server with Cline, you can skip this section entirely.
+
 ### Prerequisites
 
 - Node.js (v16+)
@@ -79,22 +124,19 @@ The server is structured around the Model Context Protocol (MCP) for communicati
 
    Then edit the `.env` file with your Azure DevOps credentials (see Authentication section below).
 
-### Running the Server
+### Running the Server Locally
 
 Build the TypeScript files:
-
 ```bash
 npm run build
 ```
 
 Start the server:
-
 ```bash
 npm start
 ```
 
 For development with hot reloading:
-
 ```bash
 npm run dev
 ```
