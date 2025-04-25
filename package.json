@@ -4,7 +4,7 @@
   "description": "MCP Server for interacting with Azure Devops (ADO)",
   "main": "dist/index.js",
   "bin": {
-    "kusto-mcp": "dist/index.js"
+    "ado-mcp": "dist/index.js"
   },
   "types": "dist/index.d.ts",
   "files": [
