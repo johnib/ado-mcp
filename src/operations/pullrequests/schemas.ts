@@ -15,6 +15,9 @@ export interface PullRequestCommentResponse {
     status: string;
     threadId: number;
     author: string;
+    commentId: number;
+    parentCommentId?: number;
+    replies?: PullRequestCommentResponse[];
 }
 
 interface ValidThread extends GitPullRequestCommentThread {
@@ -23,6 +26,8 @@ interface ValidThread extends GitPullRequestCommentThread {
         author: {
             displayName: string;
         };
+        id: number;
+        parentCommentId?: number;
     }>;
     threadContext: {
         filePath: string;
@@ -71,20 +76,49 @@ export function processPullRequestComments(threads: GitPullRequestCommentThread[
                 typeof thread.id === 'number'
             );
         })
-        // Map to our response format
-        .map(thread => ({
-            filePath: thread.threadContext.filePath,
-            location: {
-                startLine: thread.threadContext.rightFileStart?.line,
-                endLine: thread.threadContext.rightFileEnd?.line,
-                startOffset: thread.threadContext.rightFileStart?.offset,
-                endOffset: thread.threadContext.rightFileEnd?.offset
-            },
-            content: thread.comments[0].content,
-            status: getCommentThreadStatusString(thread.status),
-            threadId: thread.id,
-            author: thread.comments[0].author.displayName
-        }));
+        // Map to our response format with proper thread hierarchy
+        .map(thread => {
+            // First, process all comments in the thread
+            const processedComments = thread.comments.map(comment => ({
+                filePath: thread.threadContext.filePath,
+                location: {
+                    startLine: thread.threadContext.rightFileStart?.line,
+                    endLine: thread.threadContext.rightFileEnd?.line,
+                    startOffset: thread.threadContext.rightFileStart?.offset,
+                    endOffset: thread.threadContext.rightFileEnd?.offset
+                },
+                content: comment.content,
+                status: getCommentThreadStatusString(thread.status),
+                threadId: thread.id,
+                author: comment.author.displayName,
+                commentId: comment.id || 0,
+                parentCommentId: comment.parentCommentId || 0,
+                replies: [] as PullRequestCommentResponse[]
+            }));
+
+            // Create a map for quick lookup
+            const commentMap = new Map<number, PullRequestCommentResponse>();
+            processedComments.forEach(comment => commentMap.set(comment.commentId, comment));
+
+            // Organize comments into thread hierarchy
+            const topLevelComments: PullRequestCommentResponse[] = [];
+            processedComments.forEach(comment => {
+                if (comment.parentCommentId === 0) {
+                    topLevelComments.push(comment);
+                } else {
+                    const parentComment = commentMap.get(comment.parentCommentId);
+                    if (parentComment) {
+                        if (!parentComment.replies) {
+                            parentComment.replies = [];
+                        }
+                        parentComment.replies.push(comment);
+                    }
+                }
+            });
+
+            // Return the first comment (which will have replies nested)
+            return topLevelComments[0];
+        });
 }
 
 // Zod schemas for operations
@@ -137,8 +171,15 @@ export const CreatePRCommentSchema = z.object({
     content: z.string(),
     projectId: z.string(),
     filePath: z.string().optional(),
-    lineNumber: z.number().optional(),
-    parentCommentId: z.number().optional()
+    lineNumber: z.number().optional()
+});
+
+export const ReplyToPRCommentSchema = z.object({
+    repositoryId: z.string(),
+    pullRequestId: z.number(),
+    threadId: z.number(),
+    content: z.string(),
+    projectId: z.string()
 });
 
 export const GetPRFilesSchema = z.object({
