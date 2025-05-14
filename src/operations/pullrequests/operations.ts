@@ -1,6 +1,7 @@
 import { WebApi } from 'azure-devops-node-api';
 import {
   CommentThreadStatus,
+  CommentType,
   GitPullRequest,
   GitPullRequestChange,
   GitPullRequestCommentThread,
@@ -121,6 +122,7 @@ export async function listPRComments(
   args: z.infer<typeof schemas.ListPRCommentsSchema>
 ): Promise<schemas.PullRequestCommentResponse[]> {
   try {
+    console.error('[API] Attempting to list PR comments...');
     const gitApi = await connection.getGitApi();
     const threads = await gitApi.getThreads(
       args.repositoryId,
@@ -128,8 +130,12 @@ export async function listPRComments(
       args.projectId
     );
 
-    return schemas.processPullRequestComments(threads);
+    console.error('[API] Successfully retrieved PR threads');
+    const comments = schemas.processPullRequestComments(threads);
+    console.error(`[API] Processed ${comments.length} comments with replies`);
+    return comments;
   } catch (error) {
+    console.error('[Error] Failed to list PR comments:', error instanceof Error ? error.message : String(error));
     throw new Error(`Failed to list PR comments: ${error instanceof Error ? error.message : String(error)}`);
   }
 }
@@ -204,22 +210,19 @@ export async function updatePRThreadStatus(
 }
 
 /**
- * Create a new pull request comment
+ * Create a new pull request comment thread
  */
 export async function createPRComment(
   connection: WebApi,
   args: z.infer<typeof schemas.CreatePRCommentSchema>
 ): Promise<GitPullRequestCommentThread> {
   try {
+    console.error('[API] Attempting to create new PR comment thread...');
     const gitApi = await connection.getGitApi();
     
-    const comment: { content: string; parentCommentId?: number } = {
+    const comment = {
       content: args.content
     };
-
-    if (args.parentCommentId !== undefined) {
-      comment.parentCommentId = args.parentCommentId;
-    }
 
     const thread = {
       comments: [comment],
@@ -242,12 +245,52 @@ export async function createPRComment(
     );
 
     if (!newThread) {
+      console.error('[Error] Failed to create comment thread');
       throw new Error('Failed to create comment thread');
     }
 
+    console.error('[API] Successfully created PR comment thread');
     return newThread;
   } catch (error) {
+    console.error('[Error] Failed to create PR comment:', error instanceof Error ? error.message : String(error));
     throw new Error(`Failed to create PR comment: ${error instanceof Error ? error.message : String(error)}`);
+  }
+}
+
+/**
+ * Reply to an existing pull request comment thread
+ */
+export async function replyToPRComment(
+  connection: WebApi,
+  args: z.infer<typeof schemas.ReplyToPRCommentSchema>
+): Promise<GitPullRequestCommentThread> {
+  try {
+    console.error('[API] Attempting to reply to PR comment...');
+    const gitApi = await connection.getGitApi();
+    
+    const comment = {
+      content: args.content,
+      commentType: CommentType.Text
+    };
+
+    const updatedThread = await gitApi.createComment(
+      comment,
+      args.repositoryId,
+      args.pullRequestId,
+      args.threadId,
+      args.projectId
+    );
+
+    if (!updatedThread) {
+      console.error('[Error] Failed to create reply in thread');
+      throw new Error('Failed to create reply in thread');
+    }
+
+    console.error('[API] Successfully created PR comment reply');
+    return updatedThread;
+  } catch (error) {
+    console.error('[Error] Failed to create PR comment reply:', error instanceof Error ? error.message : String(error));
+    throw new Error(`Failed to create PR comment reply: ${error instanceof Error ? error.message : String(error)}`);
   }
 }
 
